@@ -2,7 +2,7 @@
 
 
 
-* **Split:** 
+* **Split:**
 
 
 
@@ -58,5 +58,13 @@ Para Teste:
 
 
 
+* **Tratamento:**
 
+
+
+Como vou usar Helipontos, tenho que usar z = 19 para zoom, fazendo com que eu tenha que gerar 4x mais imagens, mas para facilitar a audição e aumentar qualidade das
+
+imagens (permitindo melhor visualização para o modelo) vou juntar 4 tiles e formar uma imagem 512x512, assim como no notebook Projeto\_P2\_Mosaico\_Perdizes\_HIRES.ipynb,
+
+porque além desses benefícios, o upscale para 640x640 é muito mais sutil e perde menos qualidade.
 
