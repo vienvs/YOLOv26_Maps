@@ -26,21 +26,17 @@ Treino e Validação (Mesmo dataset, pois validação monitora overfitting, e de
 
 &#x20;- Santo Amaro (-46.716, -23.648, -46.700, -23.630)
 
+&#x20;- Moema (-46.670, -23.605, -46.655, -23.590)
 
+&#x20;- Campo Belo (-46.676, -23.625, -46.661, -23.610)
 
-REGIOES\_EXTRA = {
+&#x20;- Centro (-46.645, -23.550, -46.630, -23.536)
 
-&#x20;   'moema': {'bbox': (-46.670, -23.605, -46.655, -23.590), 'papel': 'treino\_val'},
+&#x20;- Higienópolis (-46.665, -23.548, -46.650, -23.535)
 
-&#x20;   'campo\_belo': {'bbox': (-46.676, -23.625, -46.661, -23.610), 'papel': 'treino\_val'},
+&#x20;- Pacaembu (-46.685, -23.545, -46.665, -23.530)
 
-&#x20;   'centro': {'bbox': (-46.645, -23.550, -46.630, -23.536), 'papel': 'treino\_val'},
-
-&#x20;   'higienopolis': {'bbox': (-46.665, -23.548, -46.650, -23.535), 'papel': 'treino\_val'},
-
-&#x20;   'pacaembu\_perdizes': {'bbox': (-46.685, -23.545, -46.665, -23.530), 'papel': 'treino\_val'},
-
-}
+&#x20;- Faria Lima (FIX) (-46.695, -23.572, -46.678, -23.560)
 
 
 
