@@ -18,7 +18,13 @@ Treino e Validação (Mesmo dataset, pois validação monitora overfitting, e de
 
 &#x20;- Brooklyn/ Berrini (-46.703, -23.624, -46.683, -23.606)
 
-&#x20;- 
+&#x20;- Pinheiros (-46.710, -23.575, -46.696, -23.560)
+
+&#x20;- Morumbi (-46.730, -23.612, -46.708, -23.590)
+
+&#x20;- Chucri Zaidan (-46.726, -23.628, -46.706, -23.614)
+
+&#x20;- Santo Amaro (-46.716, -23.648, -46.700, -23.630)
 
 
 
