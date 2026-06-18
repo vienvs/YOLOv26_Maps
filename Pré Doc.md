@@ -88,3 +88,54 @@ imagens (permitindo melhor visualização para o modelo) vou juntar 4 tiles e fo
 
 porque além desses benefícios, o upscale para 640x640 é muito mais sutil e perde menos qualidade.
 
+
+Peguei algumas imagens do Google Earth para complementar e chegar a 200 alvos, garantindo ângulos diferentes e fotos diferentes de pontos das mesmas regiões.
+
+
+
+Dataset de Treino/Val tem 160 imagens, sendo cerca de 30 com falsos positivos para o modelo saber o que não é
+
+
+
+Dataset de Teste tem 195 imagens
+
+
+
+Como varri a Paulista inteira, vai ter mais imagens, porém com várias sem nada, o que pode afetar o mAP do teste com variância maior
+
+
+
+Ao todo, reuni 201 incidências de Helipontos, em cerca de 150 imagens.
+
+
+
+Cerca de 2.4k imagens sem incluir no dataset, com curadoria pesada.
+
+
+
+Para o tratamento final, adicionei a etapa no Roboflow para pré processamento, dando o output já em 640x640, além do Augmentation para rotação 90° e adição de Brilho de +- 20%
+
+
+
+Ao final, foram 419 imagens para Treino, 20 para validação e 195 para teste
+
+
+
+Código para o Colab: 
+
+!pip install roboflow
+
+
+
+from roboflow import Roboflow
+
+rf = Roboflow(api\_key="l11c8wR2xo4QODKQZCJM")
+
+project = rf.workspace("yolo-maps-pucsp-vie").project("yolov26-maps-vie")
+
+version = project.version(1)
+
+dataset = version.download("yolo26")
+
+&#x20;               
+
