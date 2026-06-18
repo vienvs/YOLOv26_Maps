@@ -18,6 +18,8 @@ Treino e Validação (Mesmo dataset, pois validação monitora overfitting, e de
 
 &#x20;- Brooklyn/ Berrini (-46.703, -23.624, -46.683, -23.606)
 
+&#x20;- 
+
 
 
 Teste:
