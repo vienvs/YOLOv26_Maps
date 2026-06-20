@@ -14,12 +14,14 @@ from ultralytics import YOLO
 
 ATRIBUICAO = "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
 
-# ajuste estes caminhos conforme a sua estrutura local
-CAMINHO_BEST = "best.pt"
-CAMINHO_METRICAS = "metricas.json"
-CAMINHO_MATRIZ = "confusion_matrix.png"
-PASTA_TESTE = "test/images"
-CAMINHO_MOSAICO = "mosaico_bairro.png"
+# resolve os caminhos a partir da pasta do proprio script
+# assim funciona tanto local quanto no streamlit cloud (onde o diretorio de trabalho e a raiz do repo)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CAMINHO_BEST = os.path.join(BASE_DIR, "best.pt")
+CAMINHO_METRICAS = os.path.join(BASE_DIR, "metricas.json")
+CAMINHO_MATRIZ = os.path.join(BASE_DIR, "confusion_matrix.png")
+PASTA_TESTE = os.path.join(BASE_DIR, "test", "images")
+CAMINHO_MOSAICO = os.path.join(BASE_DIR, "mosaico_bairro.png")
 
 # tamanho da janela de visualizacao do mapa (sem alterar o zoom)
 TAMANHO_JANELA = 640
