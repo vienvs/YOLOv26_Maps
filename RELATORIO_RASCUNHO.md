@@ -134,13 +134,13 @@ Resultados do modelo principal (YOLO26n) no conjunto de teste (Avenida Paulista)
 
 | Metrica | Valor (teste) |
 |---------|---------------|
-| mAP@0.5 | [PREENCHER: valor do item 4 do notebook] |
-| mAP@0.5:0.95 | [PREENCHER: valor do item 4 do notebook] |
-| Precisao | 0,73 |
-| Revocacao | 0,82 |
+| mAP@0.5 | 0,723 |
+| mAP@0.5:0.95 | 0,512 |
+| Precisao | 0,812 |
+| Revocacao | 0,786 |
 
-A precisao e a revocacao acima vem da matriz de confusao no teste, com 27 verdadeiros positivos, 10 falsos
-positivos e 6 falsos negativos: precisao = 27/(27+10) = 0,73 e revocacao = 27/(27+6) = 0,82.
+As metricas acima sao as reportadas pelo model.val no conjunto de teste. A matriz de confusao, no ponto de
+confianca 0,25, registrou 27 verdadeiros positivos, 10 falsos positivos e 6 falsos negativos.
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
@@ -148,7 +148,7 @@ Comparacao de arquitetura no teste (alem das duas rodadas obrigatorias), sob os 
 
 | Modelo  | mAP@0.5 | mAP@0.5:0.95 | Precisao | Revocacao |
 |---------|---------|--------------|----------|-----------|
-| YOLO26n | [PREENCHER] | [PREENCHER] | 0,73 | 0,82 |
+| YOLO26n | 0,723 | 0,512 | 0,812 | 0,786 |
 | YOLO11n | 0,635   | 0,441        | 0,76     | 0,576     |
 
 O YOLO26n obteve revocacao bem maior no bairro inedito (0,82 contra 0,576 do YOLO11n), ou seja, encontrou
@@ -227,11 +227,12 @@ grupo.
 
 O projeto cobriu o ciclo completo de um detector de objetos em imagens de satelite, com enfase na construcao
 e curadoria do dataset. No conjunto de teste (Avenida Paulista, bairro inedito) o modelo principal (YOLO26n)
-encontrou cerca de 82 por cento dos helipontos (revocacao 0,82) com precisao de 0,73, generalizando bem para
-um bairro nao visto e com visual diferente. A comparacao com o YOLO11n reforcou a escolha do YOLO26n, que
-teve revocacao bem maior no bairro inedito (0,82 contra 0,576). A divisao por bairro (holdout geografico)
-forneceu uma medida honesta de generalizacao. A principal licao confirmada foi a de que a qualidade dos
-dados, e nao a troca de arquitetura, e o que mais move o resultado em um projeto com poucos exemplos.
+encontrou cerca de 79 por cento dos helipontos (revocacao 0,786) com precisao de 0,812 e mAP@0.5 de 0,723,
+generalizando bem para um bairro nao visto e com visual diferente. A comparacao com o YOLO11n reforcou a
+escolha do YOLO26n, que teve revocacao bem maior no bairro inedito (0,786 contra 0,576). A divisao por bairro
+(holdout geografico) forneceu uma medida honesta de generalizacao. A principal licao confirmada foi a de que
+a qualidade dos dados, e nao a troca de arquitetura, e o que mais move o resultado em um projeto com poucos
+exemplos.
 
 ## 17. Referencias
 
