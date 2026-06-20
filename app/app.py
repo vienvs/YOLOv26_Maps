@@ -22,6 +22,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CAMINHO_BEST = os.path.join(BASE_DIR, "best.pt")
 CAMINHO_METRICAS = os.path.join(BASE_DIR, "metricas.json")
 CAMINHO_MATRIZ = os.path.join(BASE_DIR, "confusion_matrix.png")
+CAMINHO_CURVA_MAP = os.path.join(BASE_DIR, "curva_map.png")
+CAMINHO_CURVA_LOSS = os.path.join(BASE_DIR, "curva_loss.png")
 PASTA_TESTE = os.path.join(BASE_DIR, "test", "images")
 
 TAMANHO_BLOCO = 640
@@ -240,6 +242,17 @@ with aba_metricas:
     if os.path.exists(CAMINHO_MATRIZ):
         st.markdown("#### Matriz de confusão")
         st.image(CAMINHO_MATRIZ, width=520)
+    if os.path.exists(CAMINHO_CURVA_MAP) or os.path.exists(CAMINHO_CURVA_LOSS):
+        st.markdown("#### Evolução do treino por época")
+        col_map, col_loss = st.columns(2)
+        if os.path.exists(CAMINHO_CURVA_MAP):
+            with col_map:
+                st.image(CAMINHO_CURVA_MAP, use_container_width=True)
+                st.caption("A mAP@0.5 e a mAP@0.5:0.95 sobem e estabilizam conforme o modelo aprende.")
+        if os.path.exists(CAMINHO_CURVA_LOSS):
+            with col_loss:
+                st.image(CAMINHO_CURVA_LOSS, use_container_width=True)
+                st.caption("As perdas de treino e validação descem juntas; a distância entre elas indica o nível de overfitting.")
     st.caption("A Avenida Paulista foi reservada como bairro inédito (holdout geográfico) para medir a generalização.")
 
 with aba_teste:
