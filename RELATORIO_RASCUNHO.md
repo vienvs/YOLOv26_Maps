@@ -139,14 +139,16 @@ Resultados do modelo principal (YOLO26n) no conjunto de teste (Avenida Paulista)
 
 | Metrica | Valor (teste) |
 |---------|---------------|
-| mAP@0.5 | [PREENCHER] |
-| mAP@0.5:0.95 | [PREENCHER] |
-| Precisao | [PREENCHER] |
-| Revocacao | [PREENCHER] |
+| mAP@0.5 | 0,754 |
+| mAP@0.5:0.95 | 0,512 |
+| Precisao | 0,80 |
+| Revocacao | 0,697 |
 
-As metricas acima sao as reportadas pelo model.val no conjunto de teste. A matriz de confusao, no ponto de
-confianca 0,25, registrou [PREENCHER: N] verdadeiros positivos, [PREENCHER: N] falsos positivos e
-[PREENCHER: N] falsos negativos.
+As metricas acima sao as reportadas pelo model.val no conjunto de teste, no ponto de operacao que maximiza o
+F1. A matriz de confusao, por outro lado, e desenhada em um limiar de confianca fixo de 0,25 (mais baixo), e
+por isso registra mais deteccoes: 28 verdadeiros positivos, 25 falsos positivos e 5 falsos negativos. Essa
+diferenca de limiar explica por que a matriz parece ter mais falsos positivos do que a precisao de 0,80
+sugere: a maior parte desses falsos positivos tem confianca baixa e desaparece ao subir o limiar.
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
@@ -154,13 +156,12 @@ Comparacao de arquitetura no teste (alem das duas rodadas obrigatorias), sob os 
 
 | Modelo  | mAP@0.5 | mAP@0.5:0.95 | Precisao | Revocacao |
 |---------|---------|--------------|----------|-----------|
-| YOLO26n | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| YOLO26n | 0,754 | 0,512 | 0,80 | 0,697 |
 | YOLO11n | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 
-O YOLO26n obteve revocacao maior no bairro inedito ([PREENCHER] contra [PREENCHER] do YOLO11n), ou seja,
-encontrou mais helipontos numa regiao nao vista. Isso e coerente com o esquema de atribuicao consciente de
-pequenos objetos do YOLO26, util para um alvo pequeno como o heliponto. A precisao ficou proxima entre os
-dois modelos.
+O YOLO26n obteve mAP@0.5 de 0,754 no bairro inedito, coerente com o esquema de atribuicao consciente de
+pequenos objetos do YOLO26, util para um alvo pequeno como o heliponto. [PREENCHER: comparar com o YOLO11n
+apos rodar a celula de comparacao na versao 2 do dataset.]
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
@@ -238,12 +239,10 @@ grupo.
 
 O projeto cobriu o ciclo completo de um detector de objetos em imagens de satelite, com enfase na construcao
 e curadoria do dataset. No conjunto de teste (Avenida Paulista, bairro inedito) o modelo principal (YOLO26n)
-encontrou cerca de [PREENCHER: %] dos helipontos (revocacao [PREENCHER]) com precisao de [PREENCHER] e
-mAP@0.5 de [PREENCHER], generalizando para um bairro nao visto e com visual diferente. A comparacao com o
-YOLO11n reforcou a escolha do YOLO26n, que teve revocacao maior no bairro inedito ([PREENCHER] contra
-[PREENCHER]). A divisao por bairro (holdout geografico) forneceu uma medida honesta de generalizacao. A
-principal licao confirmada foi a de que a qualidade dos dados, e nao a troca de arquitetura, e o que mais
-move o resultado em um projeto com poucos exemplos.
+encontrou cerca de 70 por cento dos helipontos (revocacao 0,697) com precisao de 0,80 e mAP@0.5 de 0,754,
+generalizando para um bairro nao visto e com visual diferente. A divisao por bairro (holdout geografico)
+forneceu uma medida honesta de generalizacao. A principal licao confirmada foi a de que a qualidade dos
+dados, e nao a troca de arquitetura, e o que mais move o resultado em um projeto com poucos exemplos.
 
 ## 17. Referencias
 
