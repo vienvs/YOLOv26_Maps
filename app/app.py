@@ -7,7 +7,7 @@ from PIL import Image
 from ultralytics import YOLO
 
 # aplicacao de demonstracao do detector de helipontos
-# mostra metricas de avaliacao, inferencia nas imagens de teste em tempo real
+# mostra metricas de avaliacao, inferencia nas imagens de teste em carrossel
 # e um modo de andar pelo mapa de um bairro com deteccao ao vivo
 # atribuicao obrigatoria da fonte das imagens:
 # Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community
@@ -22,52 +22,57 @@ CAMINHO_METRICAS = os.path.join(BASE_DIR, "metricas.json")
 CAMINHO_MATRIZ = os.path.join(BASE_DIR, "confusion_matrix.png")
 PASTA_TESTE = os.path.join(BASE_DIR, "test", "images")
 
-# tamanho de cada bloco (imagem do dataset) e da vista do mapa
+# tamanho de cada bloco (imagem do dataset) e base da vista do mapa
 TAMANHO_BLOCO = 640
+IMAGENS_POR_PAGINA = 4
 
 
 def css_tema(tema):
     # devolve o css da pagina com a fonte inter e as cores do tema claro ou escuro
     if tema == "escuro":
         fundo = "#0e1117"
-        fundo_painel = "#161b22"
+        painel = "#161b22"
         texto = "#e6edf3"
         borda = "#30363d"
     else:
         fundo = "#ffffff"
-        fundo_painel = "#f5f7fa"
+        painel = "#f3f5f8"
         texto = "#1a1a1a"
         borda = "#e2e6ea"
     estilo = """
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    html, body, [class*="css"], .stApp, button, input, textarea, select {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    html, body, .stApp, .stMarkdown, p, label, h1, h2, h3, h4, h5, h6,
+    button, input, textarea, select,
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     }
     .stApp { background-color: FUNDO; color: TEXTO; }
-    section[data-testid="stSidebar"] { background-color: FUNDO_PAINEL; }
+    header[data-testid="stHeader"] { background-color: FUNDO; }
+    [data-testid="stToolbar"] { background-color: FUNDO; }
+    section[data-testid="stSidebar"] { background-color: PAINEL; }
     section[data-testid="stSidebar"] * { color: TEXTO; }
-    h1, h2, h3, h4, h5, h6, p, span, label, div { color: TEXTO; }
+    h1, h2, h3, h4, h5, h6, p, label { color: TEXTO; }
     [data-testid="stMetric"] {
-        background-color: FUNDO_PAINEL;
+        background-color: PAINEL;
         border: 1px solid BORDA;
         border-radius: 12px;
         padding: 16px;
     }
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px 10px 0 0;
-        padding: 8px 16px;
-    }
+    .stTabs [data-baseweb="tab"] { border-radius: 10px 10px 0 0; padding: 8px 16px; }
     .stButton button {
-        border-radius: 10px;
+        border-radius: 999px;
         border: 1px solid BORDA;
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 1.1rem;
+        background-color: PAINEL;
+        color: TEXTO;
     }
     .rodape { color: TEXTO; opacity: 0.6; font-size: 0.8rem; margin-top: 24px; }
     </style>
     """
-    estilo = estilo.replace("FUNDO_PAINEL", fundo_painel)
+    estilo = estilo.replace("PAINEL", painel)
     estilo = estilo.replace("FUNDO", fundo)
     estilo = estilo.replace("TEXTO", texto)
     estilo = estilo.replace("BORDA", borda)
@@ -139,13 +144,19 @@ def construir_grade(pasta):
     return grade, colunas + 1, linhas + 1
 
 
-def desenhar(modelo, imagem, conf, iou, usar_tta):
-    # roda a inferencia e devolve a imagem anotada e o numero de deteccoes
+def anotar_imagem(modelo, imagem, conf, iou, usar_tta):
+    # roda a inferencia e devolve a imagem anotada (rgb) e o numero de deteccoes
     resultado = modelo.predict(source=imagem, conf=conf, iou=iou, augment=usar_tta, verbose=False)
     anotada = resultado[0].plot()
-    # o plot do ultralytics vem em bgr; converte para rgb
     anotada_rgb = anotada[:, :, ::-1]
     return Image.fromarray(anotada_rgb), len(resultado[0].boxes)
+
+
+@st.cache_data(show_spinner=False)
+def anotar_arquivo(caminho, conf, iou, usar_tta, _modelo):
+    # versao em cache para as imagens de teste (a chave ignora o modelo por comecar com _)
+    imagem = Image.open(caminho).convert("RGB")
+    return anotar_imagem(_modelo, imagem, conf, iou, usar_tta)
 
 
 def montar_vista(grade, col, row):
@@ -162,94 +173,116 @@ def montar_vista(grade, col, row):
 
 st.set_page_config(page_title="Detector de helipontos", layout="wide")
 
-if "tema" not in st.session_state:
-    st.session_state.tema = "escuro"
-
 with st.sidebar:
-    st.markdown("### aparencia")
-    modo_escuro = st.toggle("modo escuro", value=(st.session_state.tema == "escuro"))
-    st.session_state.tema = "escuro" if modo_escuro else "claro"
-    st.markdown("### parametros de inferencia")
-    conf = st.slider("confianca minima", 0.05, 0.95, 0.25, 0.05)
-    iou = st.slider("iou do nms", 0.1, 0.9, 0.5, 0.05)
-    usar_tta = st.checkbox("test-time augmentation (mais lento)", value=False)
+    st.markdown("### Aparência")
+    modo_escuro = st.toggle("Modo escuro", value=True, key="modo_escuro")
+    st.markdown("### Parâmetros de inferência")
+    conf = st.slider("Confiança mínima", 0.05, 0.95, 0.25, 0.05)
+    iou = st.slider("IoU do NMS", 0.1, 0.9, 0.5, 0.05)
+    usar_tta = st.checkbox("Test-time augmentation (mais lento)", value=False)
 
-st.markdown(css_tema(st.session_state.tema), unsafe_allow_html=True)
+tema = "escuro" if modo_escuro else "claro"
+st.markdown(css_tema(tema), unsafe_allow_html=True)
 
-st.title("Detector de helipontos em imagens de satelite")
-st.write("Projeto P2 - Aprendizagem de Maquina (CDIA, PUC-SP). Modelo YOLO26n treinado em imagens do ESRI World Imagery.")
+st.title("Detector de helipontos em imagens de satélite")
+st.write("Projeto P2 - Aprendizagem de Máquina (CDIA, PUC-SP). Modelo YOLO26n treinado em imagens do ESRI World Imagery.")
 
 modelo = None
 if os.path.exists(CAMINHO_BEST):
     modelo = carregar_modelo(CAMINHO_BEST)
 else:
-    st.warning("coloque o arquivo best.pt na pasta do app para habilitar a inferencia")
+    st.warning("Coloque o arquivo best.pt na pasta do app para habilitar a inferência.")
 
-aba_metricas, aba_teste, aba_mapa = st.tabs(["metricas", "inferencia do teste", "andar pelo mapa"])
+aba_metricas, aba_teste, aba_mapa = st.tabs(["Métricas", "Inferência do teste", "Andar pelo mapa"])
 
 with aba_metricas:
-    st.subheader("desempenho no conjunto de teste (Avenida Paulista)")
+    st.subheader("Desempenho no conjunto de teste (Avenida Paulista)")
     if os.path.exists(CAMINHO_METRICAS):
         with open(CAMINHO_METRICAS, "r") as arquivo:
             metricas = json.load(arquivo)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("mAP@0.5", round(metricas.get("map50", 0.0), 4))
         c2.metric("mAP@0.5:0.95", round(metricas.get("map", 0.0), 4))
-        c3.metric("precisao", round(metricas.get("precisao", 0.0), 4))
-        c4.metric("revocacao", round(metricas.get("revocacao", 0.0), 4))
+        c3.metric("Precisão", round(metricas.get("precisao", 0.0), 4))
+        c4.metric("Revocação", round(metricas.get("revocacao", 0.0), 4))
     else:
-        st.info("gere o arquivo metricas.json no notebook de treino para ver os valores aqui")
+        st.info("Gere o arquivo metricas.json no notebook de treino para ver os valores aqui.")
     if os.path.exists(CAMINHO_MATRIZ):
-        st.markdown("#### matriz de confusao")
+        st.markdown("#### Matriz de confusão")
         st.image(CAMINHO_MATRIZ, width=520)
-    st.caption("a Avenida Paulista foi reservada como bairro inedito (holdout geografico) para medir a generalizacao")
+    st.caption("A Avenida Paulista foi reservada como bairro inédito (holdout geográfico) para medir a generalização.")
 
 with aba_teste:
-    st.subheader("inferencia nas imagens de teste em tempo real")
+    st.subheader("Inferência nas imagens de teste")
     imagens = listar_imagens(PASTA_TESTE)
     if len(imagens) == 0:
-        st.info("nao ha imagens em test/images")
+        st.info("Não há imagens em test/images.")
     elif modelo is not None:
-        if "indice_teste" not in st.session_state:
-            st.session_state.indice_teste = 0
-        coluna_ant, coluna_prox, coluna_vazio = st.columns([1, 1, 6])
-        if coluna_ant.button("anterior"):
-            st.session_state.indice_teste = (st.session_state.indice_teste - 1) % len(imagens)
-        if coluna_prox.button("proxima"):
-            st.session_state.indice_teste = (st.session_state.indice_teste + 1) % len(imagens)
-        indice = st.slider("imagem", 0, len(imagens) - 1, st.session_state.indice_teste)
-        st.session_state.indice_teste = indice
-        caminho = imagens[indice]
-        imagem = Image.open(caminho).convert("RGB")
-        anotada, n = desenhar(modelo, imagem, conf, iou, usar_tta)
-        st.image(anotada, caption=os.path.basename(caminho))
-        st.metric("helipontos detectados", n)
+        total_paginas = (len(imagens) + IMAGENS_POR_PAGINA - 1) // IMAGENS_POR_PAGINA
+        if "pagina_teste" not in st.session_state:
+            st.session_state.pagina_teste = 0
+        c_ant, c_meio, c_prox = st.columns([1, 6, 1])
+        if c_ant.button("◀", key="teste_ant"):
+            st.session_state.pagina_teste = (st.session_state.pagina_teste - 1) % total_paginas
+        if c_prox.button("▶", key="teste_prox"):
+            st.session_state.pagina_teste = (st.session_state.pagina_teste + 1) % total_paginas
+        c_meio.markdown(
+            "<p style='text-align:center;margin-top:8px;'>Página "
+            + str(st.session_state.pagina_teste + 1) + " de " + str(total_paginas) + "</p>",
+            unsafe_allow_html=True,
+        )
+        inicio = st.session_state.pagina_teste * IMAGENS_POR_PAGINA
+        selecao = imagens[inicio:inicio + IMAGENS_POR_PAGINA]
+        grade_cols = st.columns(2)
+        posicao = 0
+        for caminho in selecao:
+            anotada, n = anotar_arquivo(caminho, conf, iou, usar_tta, modelo)
+            with grade_cols[posicao % 2]:
+                st.image(anotada, use_container_width=True)
+                st.caption("Helipontos detectados: " + str(n))
+            posicao = posicao + 1
 
 with aba_mapa:
-    st.subheader("andar pelo mapa do bairro (zoom fixo)")
-    st.write("use as setas para percorrer o bairro; o modelo detecta helipontos ao vivo na area visivel")
+    st.subheader("Andar pelo mapa do bairro (zoom fixo)")
+    st.write("Use as setas ao redor da imagem para percorrer o bairro; o modelo detecta helipontos ao vivo.")
     grade, colunas, linhas = construir_grade(PASTA_TESTE)
     if len(grade) == 0:
-        st.info("nao consegui montar o mapa a partir dos nomes dos blocos")
+        st.info("Não consegui montar o mapa a partir dos nomes dos blocos.")
     elif modelo is not None:
         if "mapa_col" not in st.session_state:
             st.session_state.mapa_col = 0
         if "mapa_row" not in st.session_state:
             st.session_state.mapa_row = 0
-        ce, cc, cd = st.columns(3)
-        if cc.button("cima"):
+        col_esq, col_centro, col_dir = st.columns([1, 8, 1])
+        with col_centro:
+            topo = st.columns([5, 2, 5])
+            clicou_cima = topo[1].button("▲", key="mapa_cima")
+            painel_imagem = st.empty()
+            base = st.columns([5, 2, 5])
+            clicou_baixo = base[1].button("▼", key="mapa_baixo")
+        with col_esq:
+            st.write("")
+            st.write("")
+            clicou_esq = st.button("◀", key="mapa_esq")
+        with col_dir:
+            st.write("")
+            st.write("")
+            clicou_dir = st.button("▶", key="mapa_dir")
+        # processa os cliques antes de desenhar para nao haver atraso de um rerun
+        if clicou_cima:
             st.session_state.mapa_row = max(0, st.session_state.mapa_row - 1)
-        if ce.button("esquerda"):
-            st.session_state.mapa_col = max(0, st.session_state.mapa_col - 1)
-        if cd.button("direita"):
-            st.session_state.mapa_col = min(colunas - 1, st.session_state.mapa_col + 1)
-        if cc.button("baixo"):
+        if clicou_baixo:
             st.session_state.mapa_row = min(linhas - 1, st.session_state.mapa_row + 1)
+        if clicou_esq:
+            st.session_state.mapa_col = max(0, st.session_state.mapa_col - 1)
+        if clicou_dir:
+            st.session_state.mapa_col = min(colunas - 1, st.session_state.mapa_col + 1)
         col = st.session_state.mapa_col
         row = st.session_state.mapa_row
         vista = montar_vista(grade, col, row)
-        anotada, n = desenhar(modelo, vista, conf, iou, usar_tta)
-        st.image(anotada, caption="posicao coluna " + str(col) + " linha " + str(row) + " de " + str(colunas) + "x" + str(linhas))
-        st.metric("helipontos detectados na area", n)
+        anotada, n = anotar_imagem(modelo, vista, conf, iou, usar_tta)
+        painel_imagem.image(anotada, use_container_width=True,
+                            caption="Posição: coluna " + str(col) + ", linha " + str(row) + " (de " + str(colunas) + "x" + str(linhas) + ")")
+        st.metric("Helipontos detectados na área", n)
 
 st.markdown("<div class='rodape'>" + ATRIBUICAO + "</div>", unsafe_allow_html=True)
