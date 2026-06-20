@@ -253,6 +253,8 @@ with aba_metricas:
             with col_loss:
                 st.image(CAMINHO_CURVA_LOSS, use_container_width=True)
                 st.caption("As perdas de treino e validação descem juntas; a distância entre elas indica o nível de overfitting.")
+    else:
+        st.info("Coloque curva_map.png e curva_loss.png na pasta do app para ver as curvas de treino aqui.")
     st.caption("A Avenida Paulista foi reservada como bairro inédito (holdout geográfico) para medir a generalização.")
 
 with aba_teste:
