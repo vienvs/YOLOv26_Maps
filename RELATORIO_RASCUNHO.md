@@ -81,9 +81,10 @@ imagem, com coordenadas normalizadas), e as imagens sem heliponto foram mantidas
 
 [INSERIR IMAGEM: tela do Roboflow com exemplos de caixas justas no heliponto]
 
-Ao todo foram reunidas aproximadamente [VALOR: numero de imagens com heliponto] imagens com o alvo,
-totalizando [VALOR: numero de instancias] instancias anotadas. Parte das imagens foi complementada com
-capturas do Google Earth Web, para aproximar a meta de instancias e trazer angulos e datas diferentes.
+Ao todo foram reunidas aproximadamente 150 imagens com o alvo, totalizando 201 instancias anotadas de
+heliponto. Parte das imagens foi complementada com capturas do Google Earth Web, para aproximar a meta de
+instancias e trazer angulos e datas diferentes. O conjunto de teste (Avenida Paulista) contem 33 instancias
+de heliponto distribuidas em 195 imagens (a maioria de fundo, sem o alvo).
 
 ## 7. Pre-processamento e divisao dos dados
 
@@ -95,7 +96,7 @@ treino e teste e fornece uma medida honesta de generalizacao.
 
 A augmentation foi aplicada somente ao conjunto de treino (rotacao de 90 graus e variacao de brilho de mais
 ou menos 20 por cento); validacao e teste ficaram sem augmentation, conforme o conceito visto em aula. Os
-volumes finais foram [VALOR: 419] imagens de treino, [VALOR: 20] de validacao e [VALOR: 195] de teste.
+volumes finais foram 419 imagens de treino, 20 de validacao e 195 de teste.
 
 [INSERIR IMAGEM: diagrama da divisao por bairro (treino/validacao vs teste)]
 
@@ -113,8 +114,12 @@ no minimo duas rodadas de treinamento variando exatamente um hiperparametro entr
 
 | Rodada | epochs | batch | imgsz | seed | mAP@0.5 val | mAP@0.5:0.95 val |
 |--------|--------|-------|-------|------|-------------|------------------|
-| 1      | 30     | 16    | 640   | 42   | [VALOR]     | [VALOR]          |
-| 2      | 50     | 16    | 640   | 42   | [VALOR]     | [VALOR]          |
+| 1      | 30     | 16    | 640   | 42   | [PREENCHER: valor impresso pela celula de comparacao] | [PREENCHER] |
+| 2      | 50     | 16    | 640   | 42   | 0,987       | 0,786            |
+
+Na validacao, o YOLO26n atingiu mAP@0.5 de 0,987 e mAP@0.5:0.95 de 0,786 (precisao 1,000 e revocacao
+0,936 sobre 17 instancias). Como a validacao tem apenas 20 imagens, esses valores sao otimistas e devem ser
+lidos junto com os resultados no teste (bairro inedito), que medem a generalizacao real.
 
 [INSERIR IMAGEM: curvas de perda e metricas ao longo das epocas (results.png)]
 
@@ -125,12 +130,31 @@ de 0,50. Relembrando as definicoes vistas em aula: a precisao mede, das deteccoe
 certas; a revocacao mede, dos alvos reais, quantos foram encontrados; o mAP@0.5 e a media das precisoes
 medias com IoU de 0,5; e o mAP@0.5:0.95 e a media para varios limiares de IoU, sendo mais rigoroso.
 
-| Metrica | Valor |
-|---------|-------|
-| mAP@0.5 | [VALOR] |
-| mAP@0.5:0.95 | [VALOR] |
-| Precisao | [VALOR] |
-| Revocacao | [VALOR] |
+Resultados do modelo principal (YOLO26n) no conjunto de teste (Avenida Paulista):
+
+| Metrica | Valor (teste) |
+|---------|---------------|
+| mAP@0.5 | [PREENCHER: valor do item 4 do notebook] |
+| mAP@0.5:0.95 | [PREENCHER: valor do item 4 do notebook] |
+| Precisao | 0,73 |
+| Revocacao | 0,82 |
+
+A precisao e a revocacao acima vem da matriz de confusao no teste, com 27 verdadeiros positivos, 10 falsos
+positivos e 6 falsos negativos: precisao = 27/(27+10) = 0,73 e revocacao = 27/(27+6) = 0,82.
+
+[INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
+
+Comparacao de arquitetura no teste (alem das duas rodadas obrigatorias), sob os mesmos hiperparametros:
+
+| Modelo  | mAP@0.5 | mAP@0.5:0.95 | Precisao | Revocacao |
+|---------|---------|--------------|----------|-----------|
+| YOLO26n | [PREENCHER] | [PREENCHER] | 0,73 | 0,82 |
+| YOLO11n | 0,635   | 0,441        | 0,76     | 0,576     |
+
+O YOLO26n obteve revocacao bem maior no bairro inedito (0,82 contra 0,576 do YOLO11n), ou seja, encontrou
+muito mais helipontos numa regiao nao vista. Isso e coerente com o esquema de atribuicao consciente de
+pequenos objetos do YOLO26, util para um alvo pequeno como o heliponto. A precisao ficou proxima entre os
+dois modelos.
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
@@ -202,10 +226,12 @@ grupo.
 ## 16. Conclusao
 
 O projeto cobriu o ciclo completo de um detector de objetos em imagens de satelite, com enfase na construcao
-e curadoria do dataset. Os resultados [VALOR: resumir mAP e revocacao] mostram que o modelo [VALOR: descrever
-o desempenho] e que a divisao por bairro forneceu uma medida honesta de generalizacao para a Avenida Paulista.
-A principal licao confirmada foi a de que a qualidade dos dados, e nao a troca de arquitetura, e o que mais
-move o resultado em um projeto com poucos exemplos.
+e curadoria do dataset. No conjunto de teste (Avenida Paulista, bairro inedito) o modelo principal (YOLO26n)
+encontrou cerca de 82 por cento dos helipontos (revocacao 0,82) com precisao de 0,73, generalizando bem para
+um bairro nao visto e com visual diferente. A comparacao com o YOLO11n reforcou a escolha do YOLO26n, que
+teve revocacao bem maior no bairro inedito (0,82 contra 0,576). A divisao por bairro (holdout geografico)
+forneceu uma medida honesta de generalizacao. A principal licao confirmada foi a de que a qualidade dos
+dados, e nao a troca de arquitetura, e o que mais move o resultado em um projeto com poucos exemplos.
 
 ## 17. Referencias
 
