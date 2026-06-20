@@ -95,8 +95,11 @@ inteira como bairro inedito de teste. Essa escolha evita o vazamento de tiles vi
 treino e teste e fornece uma medida honesta de generalizacao.
 
 A augmentation foi aplicada somente ao conjunto de treino (rotacao de 90 graus e variacao de brilho de mais
-ou menos 20 por cento); validacao e teste ficaram sem augmentation, conforme o conceito visto em aula. Os
-volumes finais foram 419 imagens de treino, 20 de validacao e 195 de teste.
+ou menos 20 por cento); validacao e teste ficaram sem augmentation, conforme o conceito visto em aula. Na
+versao 2 do dataset a validacao foi ampliada (saindo de uma divisao proxima de 95/5 para algo em torno de
+80/20 entre treino e validacao) para reduzir a variancia das metricas, mantendo a Avenida Paulista inteira
+como teste. Os volumes finais foram [PREENCHER: N treino] imagens de treino, [PREENCHER: N validacao] de
+validacao e [PREENCHER: N teste] de teste.
 
 [INSERIR IMAGEM: diagrama da divisao por bairro (treino/validacao vs teste)]
 
@@ -114,14 +117,16 @@ no minimo duas rodadas de treinamento variando exatamente um hiperparametro entr
 
 | Rodada | epochs | batch | imgsz | seed | mAP@0.5 val | mAP@0.5:0.95 val |
 |--------|--------|-------|-------|------|-------------|------------------|
-| 1      | 30     | 16    | 640   | 42   | [PREENCHER: valor impresso pela celula de comparacao] | [PREENCHER] |
-| 2      | 50     | 16    | 640   | 42   | 0,987       | 0,786            |
+| 1      | 30     | 16    | 640   | 42   | [PREENCHER] | [PREENCHER] |
+| 2      | 50     | 16    | 640   | 42   | [PREENCHER] | [PREENCHER] |
 
-Na validacao, o YOLO26n atingiu mAP@0.5 de 0,987 e mAP@0.5:0.95 de 0,786 (precisao 1,000 e revocacao
-0,936 sobre 17 instancias). Como a validacao tem apenas 20 imagens, esses valores sao otimistas e devem ser
-lidos junto com os resultados no teste (bairro inedito), que medem a generalizacao real.
+Na validacao, o YOLO26n atingiu mAP@0.5 de [PREENCHER] e mAP@0.5:0.95 de [PREENCHER] (precisao [PREENCHER]
+e revocacao [PREENCHER] sobre [PREENCHER: N] instancias). Mesmo com a validacao ampliada na versao 2 do
+dataset, esses valores ainda devem ser lidos junto com os resultados no teste (bairro inedito), que medem a
+generalizacao real.
 
-[INSERIR IMAGEM: curvas de perda e metricas ao longo das epocas (results.png)]
+[INSERIR IMAGEM: curva da mAP@0.5 e mAP@0.5:0.95 por epoca (curva_map.png)]
+[INSERIR IMAGEM: curva de loss de treino vs validacao por epoca (curva_loss.png)]
 
 ## 9. Avaliacao
 
@@ -134,13 +139,14 @@ Resultados do modelo principal (YOLO26n) no conjunto de teste (Avenida Paulista)
 
 | Metrica | Valor (teste) |
 |---------|---------------|
-| mAP@0.5 | 0,723 |
-| mAP@0.5:0.95 | 0,512 |
-| Precisao | 0,812 |
-| Revocacao | 0,786 |
+| mAP@0.5 | [PREENCHER] |
+| mAP@0.5:0.95 | [PREENCHER] |
+| Precisao | [PREENCHER] |
+| Revocacao | [PREENCHER] |
 
 As metricas acima sao as reportadas pelo model.val no conjunto de teste. A matriz de confusao, no ponto de
-confianca 0,25, registrou 27 verdadeiros positivos, 10 falsos positivos e 6 falsos negativos.
+confianca 0,25, registrou [PREENCHER: N] verdadeiros positivos, [PREENCHER: N] falsos positivos e
+[PREENCHER: N] falsos negativos.
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
@@ -148,18 +154,19 @@ Comparacao de arquitetura no teste (alem das duas rodadas obrigatorias), sob os 
 
 | Modelo  | mAP@0.5 | mAP@0.5:0.95 | Precisao | Revocacao |
 |---------|---------|--------------|----------|-----------|
-| YOLO26n | 0,723 | 0,512 | 0,812 | 0,786 |
-| YOLO11n | 0,635   | 0,441        | 0,76     | 0,576     |
+| YOLO26n | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| YOLO11n | [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 
-O YOLO26n obteve revocacao bem maior no bairro inedito (0,82 contra 0,576 do YOLO11n), ou seja, encontrou
-muito mais helipontos numa regiao nao vista. Isso e coerente com o esquema de atribuicao consciente de
+O YOLO26n obteve revocacao maior no bairro inedito ([PREENCHER] contra [PREENCHER] do YOLO11n), ou seja,
+encontrou mais helipontos numa regiao nao vista. Isso e coerente com o esquema de atribuicao consciente de
 pequenos objetos do YOLO26, util para um alvo pequeno como o heliponto. A precisao ficou proxima entre os
 dois modelos.
 
 [INSERIR IMAGEM: matriz de confusao (confusion_matrix.png)]
 
-Observacao sobre variancia: a validacao tem apenas 20 imagens e o teste foi varrido por inteiro (a maioria
-dos tiles e fundo, sem heliponto). Ambos aumentam a variancia das metricas e devem ser lidos com cautela.
+Observacao sobre variancia: a validacao foi ampliada na versao 2 do dataset para reduzir a variancia, mas o
+teste foi varrido por inteiro (a maioria dos tiles e fundo, sem heliponto), o que ainda adiciona variancia.
+As metricas devem ser lidas com cautela.
 
 ## 10. Analise de erros
 
@@ -188,9 +195,11 @@ antigos, hoteis), o que estressa o modelo e mostra ate que ponto ele generaliza 
 ## 12. Aplicacao web (opcional)
 
 Como diferencial, desenvolvemos uma aplicacao em Streamlit que carrega o melhor modelo e oferece: uma pagina
-de metricas, inferencia por upload de imagem, inferencia nas imagens do teste e um modo de navegar por um
-mosaico de bairro com as setas (zoom fixo, no estilo de mapas interativos), com o modelo detectando
-helipontos em tempo real na janela visivel.
+de metricas (incluindo a matriz de confusao e as curvas de treino), inferencia em imagens de teste
+aleatorias exibidas em um carrossel de quatro por vez e um modo de navegar por um mosaico de bairro com
+setas desenhadas dentro da propria imagem (zoom fixo, no estilo de mapas interativos), com o modelo
+detectando helipontos em tempo real na janela visivel. Optou-se por nao incluir upload de imagem para
+evitar entradas fora do dominio do modelo durante a apresentacao.
 
 [INSERIR IMAGEM: telas do app (metricas, inferencia e modo de navegacao no mapa)]
 
@@ -213,9 +222,11 @@ As melhorias abaixo se apoiam diretamente em topicos vistos na disciplina:
 ## 14. Limitacoes
 
 - Volume de positivos limitado pela raridade do heliponto na resolucao de 0,27 metros por pixel.
-- Validacao pequena (20 imagens) e teste majoritariamente de fundo, aumentando a variancia das metricas.
+- Validacao ampliada na versao 2 do dataset para reduzir a variancia; o teste segue majoritariamente de
+  fundo, o que ainda adiciona variancia as metricas.
 - A imagem do ESRI tem alguns anos; prediais muito recentes podem nao aparecer.
-- O modo de navegacao do app usa botoes de seta (a captura continua de teclado e uma melhoria futura).
+- O modo de navegacao do app usa setas desenhadas dentro da propria imagem; a captura continua de teclado
+  e uma melhoria futura.
 
 ## 15. Uso de IA generativa
 
@@ -227,12 +238,12 @@ grupo.
 
 O projeto cobriu o ciclo completo de um detector de objetos em imagens de satelite, com enfase na construcao
 e curadoria do dataset. No conjunto de teste (Avenida Paulista, bairro inedito) o modelo principal (YOLO26n)
-encontrou cerca de 79 por cento dos helipontos (revocacao 0,786) com precisao de 0,812 e mAP@0.5 de 0,723,
-generalizando bem para um bairro nao visto e com visual diferente. A comparacao com o YOLO11n reforcou a
-escolha do YOLO26n, que teve revocacao bem maior no bairro inedito (0,786 contra 0,576). A divisao por bairro
-(holdout geografico) forneceu uma medida honesta de generalizacao. A principal licao confirmada foi a de que
-a qualidade dos dados, e nao a troca de arquitetura, e o que mais move o resultado em um projeto com poucos
-exemplos.
+encontrou cerca de [PREENCHER: %] dos helipontos (revocacao [PREENCHER]) com precisao de [PREENCHER] e
+mAP@0.5 de [PREENCHER], generalizando para um bairro nao visto e com visual diferente. A comparacao com o
+YOLO11n reforcou a escolha do YOLO26n, que teve revocacao maior no bairro inedito ([PREENCHER] contra
+[PREENCHER]). A divisao por bairro (holdout geografico) forneceu uma medida honesta de generalizacao. A
+principal licao confirmada foi a de que a qualidade dos dados, e nao a troca de arquitetura, e o que mais
+move o resultado em um projeto com poucos exemplos.
 
 ## 17. Referencias
 
