@@ -19,12 +19,40 @@ ATRIBUICAO = "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Commu
 # resolve os caminhos a partir da pasta do proprio script
 # assim funciona tanto local quanto no streamlit cloud (onde o diretorio de trabalho e a raiz do repo)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CAMINHO_BEST = os.path.join(BASE_DIR, "best.pt")
-CAMINHO_METRICAS = os.path.join(BASE_DIR, "metricas.json")
-CAMINHO_MATRIZ = os.path.join(BASE_DIR, "confusion_matrix.png")
-CAMINHO_CURVA_MAP = os.path.join(BASE_DIR, "curva_map.png")
-CAMINHO_CURVA_LOSS = os.path.join(BASE_DIR, "curva_loss.png")
 PASTA_TESTE = os.path.join(BASE_DIR, "test", "images")
+
+# cada modelo tem seus proprios arquivos de pesos, metricas, matriz e curvas
+# assim o app permite escolher entre os dois e compara-los lado a lado
+MODELOS = {
+    "YOLO26n": {
+        "pesos": "best_yolo26n.pt",
+        "metricas": "metricas_yolo26n.json",
+        "matriz": "confusion_matrix_yolo26n.png",
+        "curva_map": "curva_map_yolo26n.png",
+        "curva_loss": "curva_loss_yolo26n.png",
+    },
+    "YOLO11n": {
+        "pesos": "best_yolo11n.pt",
+        "metricas": "metricas_yolo11n.json",
+        "matriz": "confusion_matrix_yolo11n.png",
+        "curva_map": "curva_map_yolo11n.png",
+        "curva_loss": "curva_loss_yolo11n.png",
+    },
+}
+
+
+def caminho_arquivo(nome):
+    # monta o caminho absoluto de um arquivo na pasta do app
+    return os.path.join(BASE_DIR, nome)
+
+
+def ler_metricas(nome_arquivo):
+    # le um json de metricas se existir, senao devolve None
+    caminho = caminho_arquivo(nome_arquivo)
+    if not os.path.exists(caminho):
+        return None
+    with open(caminho, "r") as arquivo:
+        return json.load(arquivo)
 
 TAMANHO_BLOCO = 640
 LADO_MAPA = 560
@@ -156,8 +184,9 @@ def anotar_imagem(modelo, imagem, conf, iou, usar_tta):
 
 
 @st.cache_data(show_spinner=False)
-def anotar_arquivo(caminho, conf, iou, usar_tta, _modelo):
-    # versao em cache para as imagens de teste (a chave ignora o modelo por comecar com _)
+def anotar_arquivo(caminho, conf, iou, usar_tta, nome_modelo, _modelo):
+    # versao em cache para as imagens de teste
+    # nome_modelo entra na chave do cache para nao misturar resultados entre modelos
     imagem = Image.open(caminho).convert("RGB")
     return anotar_imagem(_modelo, imagem, conf, iou, usar_tta)
 
@@ -208,6 +237,8 @@ st.set_page_config(page_title="Detector de helipontos", layout="wide")
 with st.sidebar:
     st.markdown("### Aparência")
     modo_escuro = st.toggle("Modo escuro", value=True, key="modo_escuro")
+    st.markdown("### Modelo")
+    nome_modelo = st.selectbox("Arquitetura", list(MODELOS.keys()))
     st.markdown("### Parâmetros de inferência")
     conf = st.slider("Confiança mínima", 0.05, 0.95, 0.25, 0.05)
     iou = st.slider("IoU do NMS", 0.1, 0.9, 0.5, 0.05)
@@ -217,20 +248,28 @@ tema = "escuro" if modo_escuro else "claro"
 st.markdown(css_tema(tema), unsafe_allow_html=True)
 
 st.title("Detector de helipontos em imagens de satélite")
-st.write("Projeto P2 - Aprendizagem de Máquina (CDIA, PUC-SP). Modelo YOLO26n treinado em imagens do ESRI World Imagery.")
+st.write("Projeto P2 - Aprendizagem de Máquina (CDIA, PUC-SP). Modelos YOLO26n e YOLO11n treinados em imagens do ESRI World Imagery.")
+
+# resolve os arquivos do modelo escolhido na barra lateral
+arquivos_modelo = MODELOS[nome_modelo]
+caminho_pesos = caminho_arquivo(arquivos_modelo["pesos"])
+caminho_metricas = caminho_arquivo(arquivos_modelo["metricas"])
+caminho_matriz = caminho_arquivo(arquivos_modelo["matriz"])
+caminho_curva_map = caminho_arquivo(arquivos_modelo["curva_map"])
+caminho_curva_loss = caminho_arquivo(arquivos_modelo["curva_loss"])
 
 modelo = None
-if os.path.exists(CAMINHO_BEST):
-    modelo = carregar_modelo(CAMINHO_BEST)
+if os.path.exists(caminho_pesos):
+    modelo = carregar_modelo(caminho_pesos)
 else:
-    st.warning("Coloque o arquivo best.pt na pasta do app para habilitar a inferência.")
+    st.warning("Coloque o arquivo " + arquivos_modelo["pesos"] + " na pasta do app para habilitar a inferência com o " + nome_modelo + ".")
 
-aba_metricas, aba_teste, aba_mapa = st.tabs(["Métricas", "Inferência do teste", "Andar pelo mapa"])
+aba_metricas, aba_comparacao, aba_teste, aba_mapa = st.tabs(["Métricas", "Comparação", "Inferência do teste", "Andar pelo mapa"])
 
 with aba_metricas:
-    st.subheader("Desempenho no conjunto de teste (Avenida Paulista)")
-    if os.path.exists(CAMINHO_METRICAS):
-        with open(CAMINHO_METRICAS, "r") as arquivo:
+    st.subheader("Desempenho do " + nome_modelo + " no conjunto de teste (Avenida Paulista)")
+    if os.path.exists(caminho_metricas):
+        with open(caminho_metricas, "r") as arquivo:
             metricas = json.load(arquivo)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("mAP@0.5", round(metricas.get("map50", 0.0), 4))
@@ -238,24 +277,43 @@ with aba_metricas:
         c3.metric("Precisão", round(metricas.get("precisao", 0.0), 4))
         c4.metric("Revocação", round(metricas.get("revocacao", 0.0), 4))
     else:
-        st.info("Gere o arquivo metricas.json no notebook de treino para ver os valores aqui.")
-    if os.path.exists(CAMINHO_MATRIZ):
+        st.info("Gere o arquivo " + arquivos_modelo["metricas"] + " no notebook para ver os valores aqui.")
+    if os.path.exists(caminho_matriz):
         st.markdown("#### Matriz de confusão")
-        st.image(CAMINHO_MATRIZ, width=520)
-    if os.path.exists(CAMINHO_CURVA_MAP) or os.path.exists(CAMINHO_CURVA_LOSS):
+        st.image(caminho_matriz, width=520)
+    if os.path.exists(caminho_curva_map) or os.path.exists(caminho_curva_loss):
         st.markdown("#### Evolução do treino por época")
         col_map, col_loss = st.columns(2)
-        if os.path.exists(CAMINHO_CURVA_MAP):
+        if os.path.exists(caminho_curva_map):
             with col_map:
-                st.image(CAMINHO_CURVA_MAP, use_container_width=True)
+                st.image(caminho_curva_map, use_container_width=True)
                 st.caption("A mAP@0.5 e a mAP@0.5:0.95 sobem e estabilizam conforme o modelo aprende.")
-        if os.path.exists(CAMINHO_CURVA_LOSS):
+        if os.path.exists(caminho_curva_loss):
             with col_loss:
-                st.image(CAMINHO_CURVA_LOSS, use_container_width=True)
+                st.image(caminho_curva_loss, use_container_width=True)
                 st.caption("As perdas de treino e validação descem juntas; a distância entre elas indica o nível de overfitting.")
     else:
-        st.info("Coloque curva_map.png e curva_loss.png na pasta do app para ver as curvas de treino aqui.")
+        st.info("Coloque as curvas (" + arquivos_modelo["curva_map"] + " e " + arquivos_modelo["curva_loss"] + ") na pasta do app.")
     st.caption("A Avenida Paulista foi reservada como bairro inédito (holdout geográfico) para medir a generalização.")
+
+with aba_comparacao:
+    st.subheader("Comparação de arquiteturas no conjunto de teste")
+    rotulos = ["mAP@0.5", "mAP@0.5:0.95", "Precisão", "Revocação"]
+    chaves = ["map50", "map", "precisao", "revocacao"]
+    linhas = []
+    for nome in MODELOS:
+        dados = ler_metricas(MODELOS[nome]["metricas"])
+        if dados is None:
+            continue
+        linha = {"Modelo": nome}
+        for i in range(len(rotulos)):
+            linha[rotulos[i]] = round(dados.get(chaves[i], 0.0), 4)
+        linhas.append(linha)
+    if len(linhas) == 0:
+        st.info("Gere os arquivos de métricas dos dois modelos no notebook para ver a comparação.")
+    else:
+        st.table(linhas)
+        st.caption("Os dois modelos nano são próximos: as diferenças de mAP ficam dentro da variância de um teste com poucas instâncias. O limiar de confiança define o equilíbrio entre precisão e revocação.")
 
 with aba_teste:
     st.subheader("Inferência em imagens de teste aleatórias")
@@ -284,7 +342,7 @@ with aba_teste:
         posicao = 0
         for idx in indices:
             caminho = imagens[idx]
-            anotada, n = anotar_arquivo(caminho, conf, iou, usar_tta, modelo)
+            anotada, n = anotar_arquivo(caminho, conf, iou, usar_tta, nome_modelo, modelo)
             with grade_cols[posicao % 2]:
                 st.image(anotada, use_container_width=True)
                 st.caption("Helipontos detectados: " + str(n))
