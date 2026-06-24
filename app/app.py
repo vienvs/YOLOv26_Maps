@@ -232,6 +232,107 @@ def desenhar_setas(imagem):
     return Image.alpha_composite(base, overlay).convert("RGB")
 
 
+@st.cache_data(show_spinner=False)
+def mapa_inferencia(col, row, conf, iou, usar_tta, nome_modelo, _modelo):
+    # roda a inferencia na vista 2x2 da posicao e devolve a imagem (560px) e o numero de deteccoes
+    # o resultado fica em cache por posicao e parametros, deixando a navegacao instantanea ao revisitar
+    grade, _, _ = construir_grade(PASTA_TESTE)
+    vista = montar_vista(grade, col, row)
+    anotada, n = anotar_imagem(_modelo, vista, conf, iou, usar_tta)
+    anotada = anotada.resize((LADO_MAPA, LADO_MAPA))
+    return anotada, n
+
+
+@st.fragment
+def painel_teste(modelo, nome_modelo, conf, iou, usar_tta, imagens):
+    # fragmento: paginar ou embaralhar reexecuta so este bloco, nao a pagina toda
+    if "ordem_teste" not in st.session_state:
+        ordem = list(range(len(imagens)))
+        random.shuffle(ordem)
+        st.session_state.ordem_teste = ordem
+        st.session_state.pagina_teste = 0
+    total_paginas = (len(imagens) + IMAGENS_POR_PAGINA - 1) // IMAGENS_POR_PAGINA
+
+    # barra de ferramentas: embaralhar bem a esquerda, setas agrupadas a direita, pagina ao centro
+    c_shuffle, c_mid, c_prev, c_next = st.columns([3, 6, 1, 1])
+    embaralhar = c_shuffle.button("Embaralhar", key="teste_shuffle", use_container_width=True)
+    anterior = c_prev.button("◀", key="teste_ant", use_container_width=True)
+    proximo = c_next.button("▶", key="teste_prox", use_container_width=True)
+    if embaralhar:
+        random.shuffle(st.session_state.ordem_teste)
+        st.session_state.pagina_teste = 0
+    if anterior:
+        st.session_state.pagina_teste = (st.session_state.pagina_teste - 1) % total_paginas
+    if proximo:
+        st.session_state.pagina_teste = (st.session_state.pagina_teste + 1) % total_paginas
+    c_mid.markdown(
+        "<p style='text-align:center; opacity:0.65; margin-top:8px;'>Página "
+        + str(st.session_state.pagina_teste + 1) + " de " + str(total_paginas) + "</p>",
+        unsafe_allow_html=True,
+    )
+
+    inicio = st.session_state.pagina_teste * IMAGENS_POR_PAGINA
+    indices = st.session_state.ordem_teste[inicio:inicio + IMAGENS_POR_PAGINA]
+    # uma linha so com as 4 imagens, para caberem todas na tela
+    grade_cols = st.columns(IMAGENS_POR_PAGINA)
+    posicao = 0
+    for idx in indices:
+        caminho = imagens[idx]
+        anotada, n = anotar_arquivo(caminho, conf, iou, usar_tta, nome_modelo, modelo)
+        with grade_cols[posicao]:
+            st.image(anotada, use_container_width=True)
+            st.caption("Detectados: " + str(n))
+        posicao = posicao + 1
+
+
+@st.fragment
+def painel_mapa(modelo, nome_modelo, conf, iou, usar_tta, colunas, linhas):
+    # fragmento: ao clicar nas setas, so este bloco e reexecutado (rapido, sem recarregar a pagina)
+    if "mapa_col" not in st.session_state:
+        st.session_state.mapa_col = 0
+    if "mapa_row" not in st.session_state:
+        st.session_state.mapa_row = 0
+    if "mapa_nonce" not in st.session_state:
+        st.session_state.mapa_nonce = 0
+    col = st.session_state.mapa_col
+    row = st.session_state.mapa_row
+    with st.spinner("Detectando..."):
+        anotada, n = mapa_inferencia(col, row, conf, iou, usar_tta, nome_modelo, modelo)
+    anotada = desenhar_setas(anotada)
+
+    esquerda, centro, direita = st.columns([1, 2, 1])
+    with centro:
+        chave_componente = "mapa_click_" + str(st.session_state.mapa_nonce)
+        clique = streamlit_image_coordinates(anotada, key=chave_componente)
+        c_metrica, c_pos = st.columns([1, 1])
+        c_metrica.metric("Helipontos na área", n)
+        c_pos.caption("Posição: coluna " + str(col) + ", linha " + str(row) + " (de " + str(colunas) + "x" + str(linhas) + ")")
+
+    if clique is not None:
+        fx = clique["x"] / float(LADO_MAPA)
+        fy = clique["y"] / float(LADO_MAPA)
+        mudou = False
+        if fx < 0.25 and 0.25 <= fy <= 0.75:
+            novo = max(0, st.session_state.mapa_col - 1)
+            mudou = novo != st.session_state.mapa_col
+            st.session_state.mapa_col = novo
+        elif fx > 0.75 and 0.25 <= fy <= 0.75:
+            novo = min(colunas - 1, st.session_state.mapa_col + 1)
+            mudou = novo != st.session_state.mapa_col
+            st.session_state.mapa_col = novo
+        elif fy < 0.25 and 0.25 <= fx <= 0.75:
+            novo = max(0, st.session_state.mapa_row - 1)
+            mudou = novo != st.session_state.mapa_row
+            st.session_state.mapa_row = novo
+        elif fy > 0.75 and 0.25 <= fx <= 0.75:
+            novo = min(linhas - 1, st.session_state.mapa_row + 1)
+            mudou = novo != st.session_state.mapa_row
+            st.session_state.mapa_row = novo
+        if mudou:
+            st.session_state.mapa_nonce = st.session_state.mapa_nonce + 1
+            st.rerun(scope="fragment")
+
+
 st.set_page_config(page_title="Detector de helipontos", layout="wide")
 
 with st.sidebar:
@@ -240,9 +341,18 @@ with st.sidebar:
     st.markdown("### Modelo")
     nome_modelo = st.selectbox("Arquitetura", list(MODELOS.keys()))
     st.markdown("### Parâmetros de inferência")
-    conf = st.slider("Confiança mínima", 0.05, 0.95, 0.25, 0.05)
-    iou = st.slider("IoU do NMS", 0.1, 0.9, 0.5, 0.05)
-    usar_tta = st.checkbox("Test-time augmentation (mais lento)", value=False)
+    conf = st.slider("Confiança mínima", 0.05, 0.95, 0.25, 0.05,
+                     help="Quão certo o modelo precisa estar para mostrar uma caixa. Subir reduz falsos positivos e detecções.")
+    iou = st.slider("IoU do NMS", 0.1, 0.9, 0.5, 0.05,
+                    help="Limiar do NMS para fundir caixas sobrepostas no mesmo objeto.")
+    usar_tta = st.checkbox("Test-time augmentation (mais lento)", value=False,
+                           help="Roda a inferência em versões aumentadas da imagem e combina os resultados.")
+    with st.expander("O que esses parâmetros fazem?"):
+        st.markdown(
+            "- **Confiança mínima:** filtra detecções fracas. Subir aumenta a precisão e reduz a revocação; descer faz o contrário.\n"
+            "- **IoU do NMS:** o NMS remove caixas duplicadas sobre o mesmo objeto. IoU baixo é mais agressivo (remove mais); IoU alto permite caixas próximas, mas pode deixar duplicatas.\n"
+            "- **TTA:** faz inferências extras em versões transformadas da imagem e combina. Tende a achar objetos difíceis (mais robusto), porém é mais lento."
+        )
 
 tema = "escuro" if modo_escuro else "claro"
 st.markdown(css_tema(tema), unsafe_allow_html=True)
@@ -321,32 +431,7 @@ with aba_teste:
     if len(imagens) == 0:
         st.info("Não há imagens em test/images.")
     elif modelo is not None:
-        if "ordem_teste" not in st.session_state:
-            ordem = list(range(len(imagens)))
-            random.shuffle(ordem)
-            st.session_state.ordem_teste = ordem
-            st.session_state.pagina_teste = 0
-        total_paginas = (len(imagens) + IMAGENS_POR_PAGINA - 1) // IMAGENS_POR_PAGINA
-        c_ant, c_meio, c_prox = st.columns([1, 6, 1])
-        if c_ant.button("◀", key="teste_ant"):
-            st.session_state.pagina_teste = (st.session_state.pagina_teste - 1) % total_paginas
-        if c_prox.button("▶", key="teste_prox"):
-            st.session_state.pagina_teste = (st.session_state.pagina_teste + 1) % total_paginas
-        if c_meio.button("Embaralhar", key="teste_shuffle"):
-            random.shuffle(st.session_state.ordem_teste)
-            st.session_state.pagina_teste = 0
-        st.caption("Página " + str(st.session_state.pagina_teste + 1) + " de " + str(total_paginas))
-        inicio = st.session_state.pagina_teste * IMAGENS_POR_PAGINA
-        indices = st.session_state.ordem_teste[inicio:inicio + IMAGENS_POR_PAGINA]
-        grade_cols = st.columns(2)
-        posicao = 0
-        for idx in indices:
-            caminho = imagens[idx]
-            anotada, n = anotar_arquivo(caminho, conf, iou, usar_tta, nome_modelo, modelo)
-            with grade_cols[posicao % 2]:
-                st.image(anotada, use_container_width=True)
-                st.caption("Helipontos detectados: " + str(n))
-            posicao = posicao + 1
+        painel_teste(modelo, nome_modelo, conf, iou, usar_tta, imagens)
 
 with aba_mapa:
     st.subheader("Andar pelo mapa do bairro (zoom fixo)")
@@ -355,46 +440,6 @@ with aba_mapa:
     if len(grade) == 0:
         st.info("Não consegui montar o mapa a partir dos nomes dos blocos.")
     elif modelo is not None:
-        if "mapa_col" not in st.session_state:
-            st.session_state.mapa_col = 0
-        if "mapa_row" not in st.session_state:
-            st.session_state.mapa_row = 0
-        if "mapa_nonce" not in st.session_state:
-            st.session_state.mapa_nonce = 0
-        col = st.session_state.mapa_col
-        row = st.session_state.mapa_row
-        vista = montar_vista(grade, col, row)
-        anotada, n = anotar_imagem(modelo, vista, conf, iou, usar_tta)
-        anotada = anotada.resize((LADO_MAPA, LADO_MAPA))
-        anotada = desenhar_setas(anotada)
-        # o nonce muda a key apos cada movimento, assim o componente e remontado
-        # e dois cliques seguidos na mesma seta voltam a ser detectados
-        chave_componente = "mapa_click_" + str(st.session_state.mapa_nonce)
-        clique = streamlit_image_coordinates(anotada, key=chave_componente)
-        st.metric("Helipontos detectados na área", n)
-        st.caption("Posição: coluna " + str(col) + ", linha " + str(row) + " (de " + str(colunas) + "x" + str(linhas) + ")")
-        if clique is not None:
-            fx = clique["x"] / float(LADO_MAPA)
-            fy = clique["y"] / float(LADO_MAPA)
-            mudou = False
-            if fx < 0.25 and 0.25 <= fy <= 0.75:
-                novo = max(0, st.session_state.mapa_col - 1)
-                mudou = novo != st.session_state.mapa_col
-                st.session_state.mapa_col = novo
-            elif fx > 0.75 and 0.25 <= fy <= 0.75:
-                novo = min(colunas - 1, st.session_state.mapa_col + 1)
-                mudou = novo != st.session_state.mapa_col
-                st.session_state.mapa_col = novo
-            elif fy < 0.25 and 0.25 <= fx <= 0.75:
-                novo = max(0, st.session_state.mapa_row - 1)
-                mudou = novo != st.session_state.mapa_row
-                st.session_state.mapa_row = novo
-            elif fy > 0.75 and 0.25 <= fx <= 0.75:
-                novo = min(linhas - 1, st.session_state.mapa_row + 1)
-                mudou = novo != st.session_state.mapa_row
-                st.session_state.mapa_row = novo
-            if mudou:
-                st.session_state.mapa_nonce = st.session_state.mapa_nonce + 1
-                st.rerun()
+        painel_mapa(modelo, nome_modelo, conf, iou, usar_tta, colunas, linhas)
 
 st.markdown("<div class='rodape'>" + ATRIBUICAO + "</div>", unsafe_allow_html=True)
