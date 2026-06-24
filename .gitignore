@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- projeto: dados grandes e artefatos que nao precisam ir pro repositorio ---
+# zips de coleta e export do dataset
+*.zip
+# pasta do drive extraida
+yolo_satelite_puc_sp-*/
+# pesos pre-treinados baixados pelo ultralytics (ficam soltos na raiz)
+/yolo11n.pt
+/yolo26n.pt
+# copias dos pesos treinados na raiz (o app usa as copias em app/)
+/best.pt
+/best_yolo11n.pt
+/best_yolo26n.pt
